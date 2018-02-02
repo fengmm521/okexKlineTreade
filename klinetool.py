@@ -9,6 +9,7 @@ import os,sys
 import json
 from magetool import urltool
 from magetool import timetool
+from magetool import listtool
 import numpy as np
 import time   
 
@@ -227,6 +228,19 @@ isopens = [False,False]
 openindex = [0,0]
 closeindex = [0,0]  #[buy,sell],均线金叉和死叉位置
 
+
+
+def save1minKline(klinedat):
+    daystr = timetool.getDateDay()
+    kline1mpth = 'data/' + daystr +'kline1m.txt'
+    if not os.path.exists(kline1mpth):
+        listtool.saveListWithLineTxt(klinedat[:-2], kline1mpth)
+    else:
+        outstr = '\n' + json.dumps(klinedat[-2])
+        f = open(kline1mpth,'a')
+        f.write(outstr)
+        f.close()
+
 def getTreadeType():
     k1d = get1minKline()
     ave3 = getAverageData(k1d,3)
@@ -299,13 +313,16 @@ def getTreadeType():
         #已作多
         if closeindex[0] > 0 and closeindex[0] <= 2:
             #时间戳，开，高，低，收，交易量，交易量转化为BTC或LTC数量
-            if k1d[-1][2] > ave13[-1]:#最高价高于13均线，平空止损
+            if k1d[-1][2] < ave13[-1]:#最高价高于13均线，平多止损
                 closeLongTrade('stop_loss')
                 openindex[0] = -1
         elif closeindex[0] >= 2:
-            if k1d[-1][4] > ave13[-1]:#达到止盈13均线,平空
+            if k1d[-1][4] < ave13[-1]:#达到止盈13均线,平多
                 closeLongTrade('stop_trader')
                 openindex[0] = -1
+
+    save1minKline(k1d)
+
     return tp
 
 
