@@ -367,7 +367,7 @@ def getTreadeType():
             print 'openIndex = %d'%(tradetool.openIndex)
     outstr = outstr + '%.4f'%(dea[-1])
     print outstr
-    print k1d[-1][0]
+    print timetool.getNowDate(k1d[-1][0]/1000) 
 
     save1minKline(k1d)
 
