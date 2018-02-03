@@ -119,6 +119,8 @@ class TradeType(object):
         self.isOpenLong = False
         self.isOpenShort = False
         self.openIndex = -1
+        self.isMacdSX = False
+        self.isMacdJX = False
 
 tradetool = TradeType()
 
@@ -255,7 +257,6 @@ def save1minKline(klinedat):
         f.write(outstr)
         f.close()
 
-
 def isClose(k1d):
     ave3 = getAverageData(k1d,3)
     ave5 = getAverageData(k1d,5)
@@ -319,10 +320,31 @@ def isClose(k1d):
             cmd  = 'say %s'%(outstr)
             os.system(cmd)
 
+    if ave5[0] >= ave13[0]:
+        return True
+    else:
+        return False
+
+
+def getLastMacdType(macd):
+
+    mtmps = macd[::-1]
+    SXidx = -1
+    JXidx = -1
+    for i in range(len(mtmps)):
+        if i > 0:
+            if macd[i-1] >= 0 and macd[i] < 0:
+                SXidx = i
+            if macd[i-1] <= 0 and macd[i] > 0:
+                JXidx = i
+
+            if SXidx >= 0 and JXidx >= 0:
+                break
+    return SXidx,JXidx
 
 def getTreadeType():
     k1d = get1minKline()
-    isClose(k1d)
+    isUP = isClose(k1d)
 
     dif,dea,macd = get_MACD(k1d)
     outstr = ''
@@ -332,6 +354,8 @@ def getTreadeType():
     if dea[-1] <= 0:  #0轴以下
         if macd[s] >= 0 and macd[e] < 0:
             outstr = '零轴以下死叉'
+            cmd  = 'say %s'%(outstr)
+            os.system(cmd)
             tp = -1
         elif macd[s] <= 0 and macd[e] > 0:
             outstr = '零轴以下金叉'
@@ -349,6 +373,8 @@ def getTreadeType():
             tp = 0
         elif macd[s] <= 0 and macd[e] > 0:
             outstr = '零轴以上金叉'
+            cmd  = 'say %s'%(outstr)
+            os.system(cmd)
             tp = 1
         else:
             outstr = '零轴以上'
@@ -357,14 +383,45 @@ def getTreadeType():
     if tp != 0:
         cmd = 'say %s,DEA等于%.2f'%(outstr,dea[-1])
         os.system(cmd)
-        if tp < 0:
+        if tp < 0 and (not isUP):
+            tradetool.isMacdSX = False
+            tradetool.isMacdJX = False
             openShort()
-        elif tp > 0:
+
+        elif tp > 0 and isUP:
+            tradetool.isMacdSX = False
+            tradetool.isMacdJX = False
             openLong()
+        else:
+            if tp < 0:
+                tradetool.isMacdSX = True
+                tradetool.isMacdJX = False
+            elif tp > 0:
+                tradetool.isMacdSX = False
+                tradetool.isMacdJX = True
+            if isUP:
+                cmd = 'say 均线未出现死叉,暂不操作'
+                os.system(cmd)
+            else:
+                cmd = 'say 均线未出现金叉,暂不操作'
+                os.system(cmd)
+            tp = 0
     else:
         if tradetool.isOpenLong or tradetool.isOpenShort:
             tradetool.openIndex += 1
             print 'openIndex = %d'%(tradetool.openIndex)
+
+        if isUP and tradetool.isMacdJX:
+            tradetool.isMacdSX = False
+            tradetool.isMacdJX = False
+            openShort()
+            tp = -1
+        elif isUP and tradetool.isMacdSX:
+            tradetool.isMacdSX = False
+            tradetool.isMacdJX = False
+            tp = 1
+            openShort()
+
     outstr = outstr + '%.4f'%(dea[-1])
     print outstr
     print timetool.getNowDate(k1d[-1][0]/1000) 
