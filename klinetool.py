@@ -274,7 +274,7 @@ def isClose(k1d):
 
     if tradetool.isOpenLong:
         #已开多,
-        if jxidxs[0] > sxidxs[0] and jxidxs[0] == 2:#均线已形成金叉
+        if jxidxs[0] < sxidxs[0] and jxidxs[0] == 2:#均线已形成金叉
             #k线最小值小于13均线,#时间戳，开，高，低，收，交易量，交易量转化为BTC或LTC数量
             if k1d[-1][3] < ave13[0]:
                 outstr = '最低价低于13均线,平多止损'
@@ -282,7 +282,7 @@ def isClose(k1d):
                 cmd  = 'say %s'%(outstr)
                 os.system(cmd)
                 closeLongTrade('stop_loss')
-        elif jxidxs[0] > sxidxs[0] and jxidxs[0] > 2:
+        elif jxidxs[0] < sxidxs[0] and jxidxs[0] > 2:
             #k线收盘价低于13均线
             if k1d[-1][4] < ave13[0]:
                 outstr = '收盘价低于13均线,平多止盈'
@@ -297,7 +297,7 @@ def isClose(k1d):
             os.system(cmd)
     if tradetool.isOpenShort:
         #已开空
-        if jxidxs[0] < sxidxs[0] and sxidxs[0] == 2:#均线已形成金叉
+        if jxidxs[0] > sxidxs[0] and sxidxs[0] == 2:#均线已形成金叉
             #k线最小值小于13均线,#时间戳，开，高，低，收，交易量，交易量转化为BTC或LTC数量
             if k1d[-1][2] > ave13[0]:
                 outstr = '最高价高于13均线,平空止损'
@@ -305,7 +305,7 @@ def isClose(k1d):
                 cmd  = 'say %s'%(outstr)
                 os.system(cmd)
                 closeShortTrade('stop_loss')
-        elif jxidxs[0] < sxidxs[0] and sxidxs[0] > 2:
+        elif jxidxs[0] > sxidxs[0] and sxidxs[0] > 2:
             #k线收盘价低于13均线
             if k1d[-1][4] > ave13[0]:
                 outstr = '收盘价高于13均线,平空止盈'
