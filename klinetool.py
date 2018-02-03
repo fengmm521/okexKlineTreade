@@ -286,6 +286,7 @@ def isClose(k1d):
         elif jxidxs[0] < sxidxs[0] and jxidxs[0] > 2:
             #k线收盘价低于13均线
             if k1d[-1][4] < ave13[0]:
+                print k1d[-1],ave13[0]
                 outstr = '收盘价低于13均线,平多止盈'
                 print outstr
                 cmd  = 'say %s'%(outstr)
@@ -296,6 +297,14 @@ def isClose(k1d):
             print outstr
             cmd  = 'say %s'%(outstr)
             os.system(cmd)
+            if k1d[-1][4] < ave13[0]:
+                print k1d[-1],ave13[0]
+                outstr = '收盘价低于13均线,平多止损'
+                print outstr
+                cmd  = 'say %s'%(outstr)
+                os.system(cmd)
+                closeLongTrade('stop_loss2')
+            
     if tradetool.isOpenShort:
         #已开空
         if jxidxs[0] > sxidxs[0] and sxidxs[0] == 2:#均线已形成金叉
@@ -319,6 +328,12 @@ def isClose(k1d):
             print outstr
             cmd  = 'say %s'%(outstr)
             os.system(cmd)
+            if k1d[-1][4] > ave13[0]:
+                outstr = '收盘价高于13均线,平空止损'
+                print outstr
+                cmd  = 'say %s'%(outstr)
+                os.system(cmd)
+                closeShortTrade('stop_loss2')
 
     if ave5[0] >= ave13[0]:
         return True
@@ -344,7 +359,7 @@ def getLastMacdType(macd):
 
 def getTreadeType():
     k1d = get1minKline()
-    isUP = isClose(k1d)
+    # isUP = isClose(k1d)
 
     dif,dea,macd = get_MACD(k1d)
     outstr = ''
@@ -356,79 +371,36 @@ def getTreadeType():
             outstr = '零轴以下死叉'
             cmd  = 'say %s'%(outstr)
             os.system(cmd)
-            tp = -1
+            tradetool.isOpenShort = True
         elif macd[s] <= 0 and macd[e] > 0:
             outstr = '零轴以下金叉'
             cmd  = 'say %s'%(outstr)
             os.system(cmd)
-            tp = 0
+            tradetool.isOpenLong = True
         else:
             outstr = '零轴以下'
-            tp = 0
+            print outstr
     elif dea[-1] >= 0: #0轴以上
         if macd[s] >= 0 and macd[e] < 0:
             outstr = '零轴以上死叉'
             cmd  = 'say %s'%(outstr)
             os.system(cmd)
-            tp = 0
+            tradetool.isOpenShort = True
         elif macd[s] <= 0 and macd[e] > 0:
             outstr = '零轴以上金叉'
             cmd  = 'say %s'%(outstr)
             os.system(cmd)
-            tp = 1
+            tradetool.isOpenLong = True
         else:
             outstr = '零轴以上'
-            tp = 0
+            print outstr
 
-    if tp != 0:
-        cmd = 'say %s,DEA等于%.2f'%(outstr,dea[-1])
-        os.system(cmd)
-        if tp < 0 and (not isUP):
-            tradetool.isMacdSX = False
-            tradetool.isMacdJX = False
-            openShort()
-
-        elif tp > 0 and isUP:
-            tradetool.isMacdSX = False
-            tradetool.isMacdJX = False
-            openLong()
-        else:
-            if tp < 0:
-                tradetool.isMacdSX = True
-                tradetool.isMacdJX = False
-            elif tp > 0:
-                tradetool.isMacdSX = False
-                tradetool.isMacdJX = True
-            if isUP:
-                cmd = 'say 均线未出现死叉,暂不操作'
-                os.system(cmd)
-            else:
-                cmd = 'say 均线未出现金叉,暂不操作'
-                os.system(cmd)
-            tp = 0
-    else:
-        if tradetool.isOpenLong or tradetool.isOpenShort:
-            tradetool.openIndex += 1
-            print 'openIndex = %d'%(tradetool.openIndex)
-
-        if isUP and tradetool.isMacdJX:
-            tradetool.isMacdSX = False
-            tradetool.isMacdJX = False
-            openShort()
-            tp = -1
-        elif isUP and tradetool.isMacdSX:
-            tradetool.isMacdSX = False
-            tradetool.isMacdJX = False
-            tp = 1
-            openShort()
+    #         openShort()
 
     outstr = outstr + '%.4f'%(dea[-1])
     print outstr
     print timetool.getNowDate(k1d[-1][0]/1000) 
 
-    save1minKline(k1d)
-
-    return tp
 
 
 def runloop():
@@ -439,19 +411,19 @@ def runloop():
         
         if hsec == 0:
             tp = getTreadeType()
-            if tp == 0:
-                print '-------------不操作'
-            elif tp > 0:
-                print '-------------可买入'
-                cmd = 'say 注意，已买入'
-                os.system(cmd)
-            elif tp < 0:
-                print '-------------可卖出'
-                cmd = 'say 注意，已卖出'
-                os.system(cmd)
-            time.sleep(50)
+            # if tp == 0:
+            #     print '-------------不操作'
+            # elif tp > 0:
+            #     print '-------------可买入'
+            #     cmd = 'say 注意，已买入'
+            #     os.system(cmd)
+            # elif tp < 0:
+            #     print '-------------可卖出'
+            #     cmd = 'say 注意，已卖出'
+            #     os.system(cmd)
+            time.sleep(55)
         else:
-            time.sleep(0.5)
+            time.sleep(0.1)
             if hsec != lastsec:
                 lastsec = hsec
 
