@@ -113,6 +113,15 @@ def getDepth():
     sells = ddic['asks']
     return buys,sells
 
+class TradeType(object):
+    """docstring for ClassName"""
+    def __init__(self):
+        self.isOpenLong = False
+        self.isOpenShort = False
+        self.openIndex = -1
+
+tradetool = TradeType()
+
 def openLong(count = basecount):
     bs,ss = getDepth()
     print bs
@@ -137,6 +146,8 @@ def openLong(count = basecount):
     f = open(savepth,'a')
     f.write(oustr)
     f.close()
+    tradetool.isOpenLong = True
+    tradetool.openIndex = 0
     cmd = 'say 开多操作'
     os.system(cmd)
 
@@ -162,11 +173,13 @@ def openShort(count = basecount):
     f = open(savepth,'a')
     f.write(oustr)
     f.close()
+    tradetool.isOpenShort = True
+    tradetool.openIndex = 0
     cmd = 'say 开空操作'
     os.system(cmd)
 
 
-def closeLongTrade(msg):
+def closeLongTrade(msg,count = basecount):
     bs,ss = getDepth()
     price = 0.0
     counttmp = 0
@@ -187,10 +200,12 @@ def closeLongTrade(msg):
     f = open(savepth,'a')
     f.write(oustr)
     f.close()
+    tradetool.isOpenLong = False
+    tradetool.openIndex = -1
     cmd = 'say 平多操作'
     os.system(cmd)
 
-def closeShortTrade(msg):
+def closeShortTrade(msg,count = basecount):
     bs,ss = getDepth()
     print bs
     print ss
@@ -214,6 +229,8 @@ def closeShortTrade(msg):
     f = open(savepth,'a')
     f.write(oustr)
     f.close()
+    tradetool.isOpenShort = False
+    tradetool.openIndex = -1
     cmd = 'say 平空操作'
     os.system(cmd)
 
@@ -224,11 +241,8 @@ def test():
     print timetool.getNowDate()
     #1.buy,0.不操作，-1.sell
 
-isopens = [False,False]
-openindex = [0,0]
-closeindex = [0,0]  #[buy,sell],均线金叉和死叉位置
 
-
+        
 
 def save1minKline(klinedat):
     daystr = timetool.getDateDay()
@@ -241,22 +255,74 @@ def save1minKline(klinedat):
         f.write(outstr)
         f.close()
 
-def getTreadeType():
-    k1d = get1minKline()
+
+def isClose(k1d):
     ave3 = getAverageData(k1d,3)
     ave5 = getAverageData(k1d,5)
     ave13 = getAverageData(k1d,13)
-    if ave5[-2] > ave13[-2] and ave5[-1] < ave13[-1]: #均线死叉
-        closeindex[1] = 0
-        closeindex[0] = -1
-    elif ave5[-2] < ave13[-2] and ave5[-1] > ave13[-1]:
-        closeindex[0] = 0   
-        closeindex[1] = -1 
-    else:
-        if closeindex[0] >= 0:
-            closeindex[0] += 1
-        if closeindex[1] >= 0:
-            closeindex[1] += 1
+    ave5 = ave5[::-1]
+    ave13 = ave13[::-1]
+
+    jxidxs = []
+    sxidxs = []
+    for i in range(len(ave5)):
+        if i > 0:
+            if ave5[i-1] > ave13[i-1] and ave5[i] <= ave13[i]: #金叉位置
+                jxidxs.append(i)
+            elif ave5[i-1] < ave13[i-1] and ave5[i] >= ave13[i]: #死叉位置
+                sxidxs.append(i)
+
+    if tradetool.isOpenLong:
+        #已开多,
+        if jxidxs[0] > sxidxs[0] and jxidxs[0] == 2:#均线已形成金叉
+            #k线最小值小于13均线,#时间戳，开，高，低，收，交易量，交易量转化为BTC或LTC数量
+            if k1d[-1][3] < ave13[0]:
+                outstr = '最低价低于13均线,平多止损'
+                print outstr
+                cmd  = 'say %s'%(outstr)
+                os.system(cmd)
+                closeLongTrade('stop_loss')
+        elif jxidxs[0] > sxidxs[0] and jxidxs[0] > 2:
+            #k线收盘价低于13均线
+            if k1d[-1][4] < ave13[0]:
+                outstr = '收盘价低于13均线,平多止盈'
+                print outstr
+                cmd  = 'say %s'%(outstr)
+                os.system(cmd)
+                closeLongTrade('stop_win')
+        else:
+            outstr = '已开多，但均线还未出现金叉'
+            print outstr
+            cmd  = 'say %s'%(outstr)
+            os.system(cmd)
+    if tradetool.isOpenShort:
+        #已开空
+        if jxidxs[0] < sxidxs[0] and sxidxs[0] == 2:#均线已形成金叉
+            #k线最小值小于13均线,#时间戳，开，高，低，收，交易量，交易量转化为BTC或LTC数量
+            if k1d[-1][2] > ave13[0]:
+                outstr = '最高价高于13均线,平空止损'
+                print outstr
+                cmd  = 'say %s'%(outstr)
+                os.system(cmd)
+                closeShortTrade('stop_loss')
+        elif jxidxs[0] < sxidxs[0] and sxidxs[0] > 2:
+            #k线收盘价低于13均线
+            if k1d[-1][4] > ave13[0]:
+                outstr = '收盘价高于13均线,平空止盈'
+                print outstr
+                cmd  = 'say %s'%(outstr)
+                os.system(cmd)
+                closeShortTrade('stop_win')
+        else:
+            outstr = '已开空，但均线还未出现死叉'
+            print outstr
+            cmd  = 'say %s'%(outstr)
+            os.system(cmd)
+
+
+def getTreadeType():
+    k1d = get1minKline()
+    isClose(k1d)
 
     dif,dea,macd = get_MACD(k1d)
     outstr = ''
@@ -269,6 +335,8 @@ def getTreadeType():
             tp = -1
         elif macd[s] <= 0 and macd[e] > 0:
             outstr = '零轴以下金叉'
+            cmd  = 'say %s'%(outstr)
+            os.system(cmd)
             tp = 0
         else:
             outstr = '零轴以下'
@@ -276,6 +344,8 @@ def getTreadeType():
     elif dea[-1] >= 0: #0轴以上
         if macd[s] >= 0 and macd[e] < 0:
             outstr = '零轴以上死叉'
+            cmd  = 'say %s'%(outstr)
+            os.system(cmd)
             tp = 0
         elif macd[s] <= 0 and macd[e] > 0:
             outstr = '零轴以上金叉'
@@ -289,37 +359,15 @@ def getTreadeType():
         os.system(cmd)
         if tp < 0:
             openShort()
-            openindex[1] = 1
         elif tp > 0:
             openLong()
-            openindex[0] = 1
+    else:
+        if tradetool.isOpenLong or tradetool.isOpenShort:
+            tradetool.openIndex += 1
+            print 'openIndex = %d'%(tradetool.openIndex)
     outstr = outstr + '%.4f'%(dea[-1])
     print outstr
-    
-
-    if openindex[1] > 0:
-        #已作空
-        if closeindex[1] > 0 and closeindex[1] <= 2:
-            #时间戳，开，高，低，收，交易量，交易量转化为BTC或LTC数量
-            if k1d[-1][2] > ave13[-1]:#最高价高于13均线，平空止损
-                closeShortTrade('stop_loss')
-                openindex[1] = -1
-        elif closeindex[1] >= 2:
-            if k1d[-1][4] > ave13[-1]:#达到止盈13均线,平空
-                closeShortTrade('stop_trader')
-                openindex[1] = -1
-
-    if openindex[0] > 0:
-        #已作多
-        if closeindex[0] > 0 and closeindex[0] <= 2:
-            #时间戳，开，高，低，收，交易量，交易量转化为BTC或LTC数量
-            if k1d[-1][2] < ave13[-1]:#最高价高于13均线，平多止损
-                closeLongTrade('stop_loss')
-                openindex[0] = -1
-        elif closeindex[0] >= 2:
-            if k1d[-1][4] < ave13[-1]:#达到止盈13均线,平多
-                closeLongTrade('stop_trader')
-                openindex[0] = -1
+    print k1d[-1][0]
 
     save1minKline(k1d)
 
@@ -348,10 +396,7 @@ def runloop():
         else:
             time.sleep(0.5)
             if hsec != lastsec:
-                # print hsec
                 lastsec = hsec
-
-
 
 
 def main():
