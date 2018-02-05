@@ -30,11 +30,16 @@ def read5MimKline():
     #[1510590900000, 64.535, 64.564, 64.38, 64.518, 9022.0, 1399.350184200521]
     ##时间戳，开，高，低，收，交易量，交易量转化为BTC或LTC数量
 def get1minKline():
-    turl = 'https://www.okex.com/api/v1/future_kline.do?symbol=ltc_usd&type=1min&contract_type=quarter&size=300'
-    data = urltool.getUrl(turl)
-    ddic = json.loads(data)
-    print len(ddic)
-    return ddic
+    try:
+        turl = 'https://www.okex.com/api/v1/future_kline.do?symbol=ltc_usd&type=1min&contract_type=quarter&size=300'
+        data = urltool.getUrl(turl)
+        ddic = json.loads(data)
+        print len(ddic)
+        return ddic
+    except Exception as e:
+        print '未请求到数据'
+        return None
+    
 
 def getAverageData(datas,pAver = 3,didx = 4):
     #[1517536380000,142.443,142.443,142,142,3486,244.8654307]
@@ -360,6 +365,8 @@ def getLastMacdType(macd):
 def getTreadeType():
     k1d = get1minKline()
     # isUP = isClose(k1d)
+    if not k1d:
+        return
 
     dif,dea,macd = get_MACD(k1d)
     outstr = ''
@@ -410,9 +417,11 @@ def runloop():
         hsec = loctim.tm_sec
         
         if hsec == 0:
-            tp = getTreadeType()
             tinksound = 'afplay /System/Library/Sounds/Tink.aiff'
             os.system(tinksound)
+            
+            tp = getTreadeType()
+            
             # if tp == 0:
             #     print '-------------不操作'
             # elif tp > 0:
