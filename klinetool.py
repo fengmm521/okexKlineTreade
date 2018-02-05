@@ -411,6 +411,8 @@ def runloop():
         
         if hsec == 0:
             tp = getTreadeType()
+            tinksound = 'afplay /System/Library/Sounds/Tink.aiff'
+            os.system(tinksound)
             # if tp == 0:
             #     print '-------------不操作'
             # elif tp > 0:

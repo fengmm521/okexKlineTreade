@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 
+import os
+
 if __name__ == '__main__':
-    a = [1,2,3,4]
-    a = a[::-1]
-    print a
+    tinksound = 'afplay /System/Library/Sounds/Tink.aiff'
+    os.system(tinksound)
