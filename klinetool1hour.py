@@ -343,7 +343,7 @@ def closeLong(msg,count = basecount):
 
 def testIsState(dea15type,macd15type,dae30type,macd30type):
 
-    if dae30type == 1:
+    if macd30type == 1:
         tradetool.isMacd30JX = True
         tradetool.isMacd30SX = False
     elif macd30type == -1:
