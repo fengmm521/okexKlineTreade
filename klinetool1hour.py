@@ -13,6 +13,11 @@ from magetool import listtool
 import numpy as np
 import time   
 
+
+if not os.path.exists('data'):
+    os.mkdir('data')
+
+
 BaseKlinePth = 'data/kline.txt'
 
 def read5MimKline():
