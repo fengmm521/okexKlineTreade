@@ -9,7 +9,6 @@ import os,sys
 import json
 from magetool import urltool
 from magetool import timetool
-from magetool import listtool
 import numpy as np
 import time   
 
@@ -44,7 +43,6 @@ def get1minKline():
     except Exception as e:
         print '未请求到数据'
         return None
-
 def get3minKline():
     try:
         turl = 'https://www.okex.com/api/v1/future_kline.do?symbol=ltc_usd&type=3min&contract_type=quarter&size=300'
@@ -66,7 +64,6 @@ def get5minKline():
     except Exception as e:
         print '未请求到数据'
         return None
-
 def get15minKline():
     try:
         turl = 'https://www.okex.com/api/v1/future_kline.do?symbol=ltc_usd&type=15min&contract_type=quarter&size=300'
@@ -161,7 +158,7 @@ def get_MACD(df,dshort = 12,dlong = 26,M = 9):
     
 
 basecount = 1
-savepth = 'data/simulation.txt'
+
 
 #price,count
 longprice = []
@@ -190,6 +187,11 @@ def isClose(k1d):
     ave5 = getAverageData(k1d,5)
     ave13 = getAverageData(k1d,13)
 
+def getMACDXieLv(macddats):
+    xl = macddats[-1] - macddats[-2]
+    return xl
+
+
 def getTreadeType(klinedata):
     k1d = klinedata
     # isUP = isClose(k1d)
@@ -197,6 +199,9 @@ def getTreadeType(klinedata):
         return None
 
     dif,dea,macd = get_MACD(k1d)
+
+    macdchange = getMACDXieLv(macd)
+
     outstr = ''
     tp = 0
     s = -2
@@ -207,35 +212,36 @@ def getTreadeType(klinedata):
             # cmd  = 'say %s'%(outstr)
             # os.system(cmd)
             print outstr
-            return -1,-1
+
+            return macd[-1],-1,macdchange
         elif macd[s] <= 0 and macd[e] > 0:
             outstr = '零轴以下金叉'
             # cmd  = 'say %s'%(outstr)
             # os.system(cmd)
             print outstr
-            return -1,1
+            return macd[-1],1,macdchange
         else:
             outstr = '零轴以下'
             print outstr
-            return -1,0
+            return macd[-1],0,macdchange
     elif dea[-1] >= 0: #0轴以上
         if macd[s] >= 0 and macd[e] < 0:
             outstr = '零轴以上死叉'
             # cmd  = 'say %s'%(outstr)
             # os.system(cmd)
             print outstr
-            return 1,-1
+            return macd[-1],-1,macdchange
         elif macd[s] <= 0 and macd[e] > 0:
             outstr = '零轴以上金叉'
             # cmd  = 'say %s'%(outstr)
             # os.system(cmd)
             # tradetool.isOpenLong = True
             print outstr
-            return 1,1
+            return macd[-1],1,macdchange
         else:
             outstr = '零轴以上'
             print outstr
-            return 1,0
+            return macd[-1],0,macdchange
     #         openShort()
 
     # outstr = outstr + '%.4f'%(dea[-1])
@@ -243,162 +249,168 @@ def getTreadeType(klinedata):
     # print timetool.getNowDate(k1d[-1][0]/1000) 
 class TradeType(object):
     """docstring for ClassName"""
-    def __init__(self):
+    def __init__(self,spth):
         self.isOpenLong = False
         self.isOpenShort = False
-        self.isMacd15SX = False
-        self.isMacd15JX = False
-        self.isMacd30SX = False
-        self.isMacd30JX = False
+        self.savepth = spth
+        self.watchcount = 3
+        self.isMacdSXs = []
+        self.isMacdJXs = []
 
-tradetool = TradeType()
+        for i in range(self.watchcount):
+            self.isMacdSXs.append(False)
+            self.isMacdJXs.append(False)
 
-def openShort(count = basecount):
+    def openShort(self,count = basecount):
     
 
-    bs,ss = getDepth()
-    price = 0.0
-    counttmp = 0
+        bs,ss = getDepth()
+        price = 0.0
+        counttmp = 0
+        ss = ss[::-1]
+        n = 0
+        while True:
+            n -= 1
+            counttmp += bs[n][1]
+            if counttmp >= count:
+                price = bs[-n][0]
+                break
+            if n < -5:
+                price = bs[-5][0]
+                break
+        strtime = str(timetool.getNowDate())
+        oustr = 'openShort_%.4f_%d,%s\n'%(price,count,strtime)
+        print oustr
+        f = open(self.savepth,'a')
+        f.write(oustr)
+        f.close()
+        # tradetool.isOpenShort = True
+        self.isOpenShort = True #openshort
 
-    n = 0
-    while True:
-        n -= 1
-        counttmp += bs[n][1]
-        if counttmp >= count:
-            price = bs[-n][0]
-            break
-        if n < -5:
-            price = bs[-5][0]
-            break
-    strtime = str(timetool.getNowDate())
-    oustr = 'openShort_%.4f_%d,%s\n'%(price,count,strtime)
-    print oustr
-    f = open(savepth,'a')
-    f.write(oustr)
-    f.close()
-    # tradetool.isOpenShort = True
-    tradetool.isOpenShort = True #openshort
+        # cmd = 'say 开空操作'
+        # os.system(cmd)
 
-    # cmd = 'say 开空操作'
-    # os.system(cmd)
+    def closeShort(self,msg,count = basecount):
+        
+        bs,ss = getDepth()
+        ss = ss[::-1]
+        print bs
+        print ss
+        price = 0.0
 
-def closeShort(msg,count = basecount):
-    
-    bs,ss = getDepth()
-    print bs
-    print ss
-    price = 0.0
+        counttmp = 0
 
-    counttmp = 0
+        n = 0
+        while True:
+            n -= 1
+            counttmp += ss[n][1]
+            if counttmp >= count:
+                price = ss[-n][0]
+                break
+            if n < -5:
+                price = bs[-5][0]
+                break
+        strtime = str(timetool.getNowDate())
+        oustr = 'closeShort_%.4f_%d,%s,%s\n'%(price,count,strtime,msg)
+        print oustr
+        f = open(self.savepth,'a')
+        f.write(oustr)
+        f.close()
+        self.isOpenShort = False #closlong
 
-    n = 0
-    while True:
-        n -= 1
-        counttmp += ss[n][1]
-        if counttmp >= count:
-            price = ss[-n][0]
-            break
-        if n < -5:
-            price = bs[-5][0]
-            break
-    strtime = str(timetool.getNowDate())
-    oustr = 'closeShort_%.4f_%d,%s,%s\n'%(price,count,strtime,msg)
-    print oustr
-    f = open(savepth,'a')
-    f.write(oustr)
-    f.close()
-    tradetool.isOpenShort = False #closlong
+        # cmd = 'say 平空操作'
+        # os.system(cmd)
 
-    # cmd = 'say 平空操作'
-    # os.system(cmd)
+    def openLong(self,count = basecount):
+        
+        bs,ss = getDepth()
+        ss = ss[::-1]
+        price = 0.0
+        counttmp = 0
 
-def openLong(count = basecount):
-    
-    bs,ss = getDepth()
+        n = 0
+        while True:
+            n -= 1
+            counttmp += ss[n][1]
+            if counttmp >= count:
+                price = ss[-n][0]
+                break
+            if n < -5:
+                price = bs[-5][0]
+                break
+        strtime = str(timetool.getNowDate())
+        oustr = 'openLong_%.4f_%d,%s\n'%(price,count,strtime)
+        print oustr
+        f = open(self.savepth,'a')
+        f.write(oustr)
+        f.close()
+        self.isOpenLong = True #openlong
+        # cmd = 'say 开多操作'
+        # os.system(cmd)
 
-    price = 0.0
-    counttmp = 0
+    def closeLong(self,msg,count = basecount):
+        
+        bs,ss = getDepth()
+        ss = ss[::-1]
+        price = 0.0
+        counttmp = 0
 
-    n = 0
-    while True:
-        n -= 1
-        counttmp += ss[n][1]
-        if counttmp >= count:
-            price = ss[-n][0]
-            break
-        if n < -5:
-            price = bs[-5][0]
-            break
-    strtime = str(timetool.getNowDate())
-    oustr = 'openLong_%.4f_%d,%s\n'%(price,count,strtime)
-    print oustr
-    f = open(savepth,'a')
-    f.write(oustr)
-    f.close()
-    tradetool.isOpenLong = True #openlong
-    # cmd = 'say 开多操作'
-    # os.system(cmd)
+        n = 0
+        while True:
+            n -= 1
+            counttmp += bs[n][1]
+            if counttmp >= count:
+                price = bs[-n][0]
+                break
+            if n < -5:
+                price = bs[-5][0]
+                break
+        strtime = str(timetool.getNowDate())
+        oustr = 'closeLong_%.4f_%d,%s,%s\n'%(price,count,strtime,msg)
+        print oustr
+        f = open(self.savepth,'a')
+        f.write(oustr)
+        f.close()
+        self.isOpenLong = False #closlong
 
-def closeLong(msg,count = basecount):
-    
-    bs,ss = getDepth()
-    price = 0.0
-    counttmp = 0
+        # cmd = 'say 平多操作'
+        # os.system(cmd)
 
-    n = 0
-    while True:
-        n -= 1
-        counttmp += bs[n][1]
-        if counttmp >= count:
-            price = bs[-n][0]
-            break
-        if n < -5:
-            price = bs[-5][0]
-            break
-    strtime = str(timetool.getNowDate())
-    oustr = 'closeLong_%.4f_%d,%s,%s\n'%(price,count,strtime,msg)
-    print oustr
-    f = open(savepth,'a')
-    f.write(oustr)
-    f.close()
-    tradetool.isOpenLong = False #closlong
+if not os.path.exists('data/trade'):
+    os.mkdir('data/trade')
 
-    # cmd = 'say 平多操作'
-    # os.system(cmd)
+trademacdtool = TradeType('data/trade/t135m.txt')
+
+def testIsStateWithMacdChange(dat1,dat3,dat5):
+
+    macdv1,macd1type,macdchange1 = dat1
+    macdv3,macd3type,macdchange3 = dat3
+    macdv5,macd5type,macdchange5 = dat5
 
 
 
-def testIsState(dea15type,macd15type,dae30type,macd30type):
+    if trademacdtool.isOpenLong:
+        # if (macdchange1 < 0 and macdchange3 < 0):
+        #     trademacdtool.closeLong('1')
+        # elif (macdchange1 < 0 and macdchange5 < 0):
+        #     trademacdtool.closeLong('2')
+        if macdchange3 < 0 and macdchange5 < 0:
+            trademacdtool.closeLong('3')
+    else:
+        if macdchange1 > 0 and macdchange3 > 0 and macdchange5 > 0:
+            trademacdtool.openLong()
 
-    if macd30type == 1:
-        tradetool.isMacd30JX = True
-        tradetool.isMacd30SX = False
-    elif macd30type == -1:
-        tradetool.isMacd30JX = False
-        tradetool.isMacd30SX = True
-
-    if macd15type == 1:
-        tradetool.isMacd15JX = True
-        tradetool.isMacd15SX = False
-    elif macd15type == -1:
-        tradetool.isMacd15JX = False
-        tradetool.isMacd15SX = True
-
-    if tradetool.isMacd15JX and tradetool.isMacd30JX:
-        if not tradetool.isOpenLong: #openlong
-            openLong()
-        if tradetool.isOpenShort:
-            closeShort()
-    elif tradetool.isMacd15SX and tradetool.isMacd30SX:
-        if not tradetool.isOpenShort:
-            openShort()
-        if tradetool.isOpenLong:
-            closeLong()
-    elif tradetool.isOpenLong and tradetool.isMacd15SX:
-        closeLong()
-    elif tradetool.isOpenShort and tradetool.isMacd15JX:
-        closeShort()
-
+    if trademacdtool.isOpenShort:
+        # if (macdchange1 > 0 and macdchange3 > 0):
+        #     trademacdtool.closeShort('1')
+        # elif (macdchange1 > 0 and macdchange5 > 0):
+        #     trademacdtool.closeShort('2')
+        # el
+        if macdchange3 > 0 and macdchange5 > 0:
+            trademacdtool.closeShort('3')
+    else:
+        if macdchange1 < 0 and macdchange3 < 0 and macdchange5 < 0:
+            trademacdtool.openShort()
 
 def runloop():
     lastsec = 0
@@ -410,16 +422,20 @@ def runloop():
         if hsec == 0:
             # tinksound = 'afplay /System/Library/Sounds/Tink.aiff'
             # os.system(tinksound)
-            k15mindata = get15minKline()
-            deatype15,macdtype15 = getTreadeType(k15mindata)
+            k1mindata = get1minKline()
+            dat1 = getTreadeType(k1mindata)
             time.sleep(1)
-            k30mindata = get30minKline()
-            deatype30,macdtype30 = getTreadeType(k30mindata)
-            ordertype = testIsState(deatype15,macdtype15,deatype30,macdtype30)
+            k3mindata = get3minKline()
+            dat3 = getTreadeType(k3mindata)
+            time.sleep(1)
+            k5mindata = get5minKline()
+            dat5 = getTreadeType(k5mindata)
+            # ordertype = testIsState(dat1,dat3,dat5)
+            ordertype = testIsStateWithMacdChange(dat1, dat3, dat5)
 
-            time.sleep(900) #15分钟
+            time.sleep(290) #比5分钟少10秒,取数据在这一分马上结束时获取
         else:
-            time.sleep(0.5)
+            time.sleep(0.4)
             if hsec != lastsec:
                 lastsec = hsec
 
